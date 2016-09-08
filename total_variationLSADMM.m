@@ -1,9 +1,9 @@
 function [x, history] = total_variationLSADMM(b, lambda, rho,r,alpha)
-% total_variation  Solve total variation minimization via ADMM
+% total_variation  Solve total variation minimization via LSADMM
 %
 % [x, history] = total_variation(b, lambda, rho, alpha)
 %
-% Solves the following problem via ADMM:
+% Solves the following problem via LSADMM:
 %
 %   minimize  (1/2)||x - b||_2^2 + lambda * sum_i |x_{i+1} - x_i|
 %
@@ -18,7 +18,7 @@ function [x, history] = total_variationLSADMM(b, lambda, rho,r,alpha)
 % solution of y-subproblem
 % y=1/(1+tau*r)*(b+y+1/(tau*r)*q);
 % where
-% r>rho||A^TA|| and tau\in[0.8,1) and q=-D'*£¨u-rho*(x-D*y)£©
+% r>rho||A^TA|| and tau\in[0.8,1) and q=-D'*ï¼ˆu-rho*(x-D*y)ï¼‰
 %
 %updating of multiplier u
 %u=u-rho*(x-D*y);
@@ -37,7 +37,7 @@ function [x, history] = total_variationLSADMM(b, lambda, rho,r,alpha)
 % More information can be found in the paper linked at:
 % http://www.stanford.edu/~boyd/papers/distr_opt_stat_learning_admm.html
 %
-tau=1;%ÒòÎªÊÇADMM£¬ËùÒÔtauÏàµ±ÓÚÃ»ÓÐ
+tau=1;%å› ä¸ºæ˜¯ADMMï¼Œæ‰€ä»¥tauç›¸å½“äºŽæ²¡æœ‰
 t_start = tic;
 %% Global constants and defaults
 
@@ -58,18 +58,14 @@ x = zeros(n,1);
 z = zeros(n,1);
 u = zeros(n,1);
 
-% if ~QUIET
-%     fprintf('%3s\t%10s\t%10s\t%10s\t%10s\t%10s\n', 'iter', ...
-%         'r norm', 'eps pri', 's norm', 'eps dual', 'objective');
-% end
+
 
 I = speye(n);
-% DtD = D'*D;
+
 
 for k = 1:MAX_ITER
     
     % x-update
-    %     x = (I + rho*DtD) \ (b + rho*D'*(z-u));
     x=shrinkage(D*z+u/rho,lambda/rho);
     
     
@@ -91,14 +87,8 @@ for k = 1:MAX_ITER
     history.s_norm(k)  = norm(-rho*D'*(z - zold));
     
     history.eps_pri(k) = sqrt(n)*ABSTOL + RELTOL*max(norm(x), norm(D*z));
-    %    history.eps_pri(k) = sqrt(n)*ABSTOL + RELTOL*max(norm(x), norm(D*y));
-    history.eps_dual(k)= sqrt(n)*ABSTOL + RELTOL*norm(rho*u);
-    
-%     if ~QUIET
-%         fprintf('%3d\t%10.4f\t%10.4f\t%10.4f\t%10.4f\t%10.2f\n', k, ...
-%             history.r_norm(k), history.eps_pri(k), ...
-%             history.s_norm(k), history.eps_dual(k), history.objval(k));
-%     end
+    history.eps_dual(k)= sqrt(n)*ABSTOL + RELTOL*norm(u);
+
     
     if (history.r_norm(k) < history.eps_pri(k) && ...
             history.s_norm(k) < history.eps_dual(k))
@@ -108,9 +98,6 @@ for k = 1:MAX_ITER
     end
 end
 
-% if ~QUIET
-%     toc(t_start);
-% end
 end
 
 function obj = objective(b, lambda, x, y)
