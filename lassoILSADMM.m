@@ -2,11 +2,11 @@ function [z, historz] = lassoILSADMM(A, b, lambda, rho,r,alpha)
 tau=(alpha^2-alpha+4)/(alpha^2-2*alpha+5);
 r=r*tau;
 %r>rho||A^TA||
-% lasso  Solve lasso problem via ADMM
+% lasso  Solve lasso problem via ILSADMM
 %
 % [z, historz] = lasso(A, b, lambda, rho, alpha);
 %
-% Solves the following problem via ADMM:
+% Solves the following problem via ILSADMM:
 %
 %   minimize 1/2*|| Az - b ||_2^2 + \lambda ||z ||_1
 %
@@ -16,7 +16,7 @@ r=r*tau;
 % x=1/(1+rho)*(b+u+rho*A*z)
 %solution of z-subproblem
 %z=S_{u/(tau*r)}(x+q/(tau*r) )where
-%r>rho||A^TA|| and tau\in[0.8,1) and q=A'*£¨u-rho*(x-A*z)£©
+%r>rho||A^TA|| and tau\in[0.8,1) and q=A'*ï¼ˆu-rho*(x-A*z)ï¼‰
 % The solution is returned in the vector z.
 %
 % historz is a structure that contains the objective value, the primal and
@@ -53,36 +53,15 @@ x = zeros(m,1);
 z = zeros(n,1);
 u = zeros(m,1);
 
-% cache the factorization
-% [L U] = factor(A, rho);
 
-% if ~QUIET
-%     fprintf('%3s\t%10s\t%10s\t%10s\t%10s\t%10s\n', 'iter', ...
-%         'r norm', 'eps pri', 's norm', 'eps dual', 'objective');
-% end
-% ATA=A'*A;
-% [v,d]=eigs(ATA);
-% r=max(d(:));
-% save r
 for k = 1:MAX_ITER
     
     % x-update
-    %     q = Atb + rho*(z - u);    % temporarz value
-    %     if( m >= n )    % if skinnz
-    %         x = U \ (L \ q);
-    %     else            % if fat
-    %         x = q/rho - (A'*(U \ ( L \ (A*q) )))/rho^2;
-    %     end
-    % x=1/(1+rho)*(b+u-rho*A*z);´í¹ýÎÞ
     x=1/(1+rho)*(b+u+rho*A*z);
     % z-update with relaxation
     zold = z;
-    %     x_hat = alpha*x + (1 - alpha)*zold;
     x_hat=x;
-    u = u - alpha* rho*(x - A*z);% SADMMÖÐµÚÒ»¸ömultiplierµÄparameterµÈÓÚalpha
-    %     z = shrinkage(x_hat + u, lambda/rho);
-    %z=S_{u/(tau*r)}(x+q/(tau*r) )where
-    %r>rho||A^TA|| and tau\in[0.8,1) and
+    u = u - alpha* rho*(x - A*z);% SADMMä¸­ç¬¬ä¸€ä¸ªmultiplierçš„parameterç­‰äºŽalpha
     q=-A' * (u-rho*(x-A*z));
     z = shrinkage(z + q/r, lambda / r);
     % u-update
@@ -95,13 +74,8 @@ for k = 1:MAX_ITER
     historz.s_norm(k)  = norm(-rho*A*(z - zold));
     
     historz.eps_pri(k) = sqrt(n)*ABSTOL + RELTOL*max(norm(x), norm(-A*z));
-    historz.eps_dual(k)= sqrt(n)*ABSTOL + RELTOL*norm(rho*u);
-    
-%     if ~QUIET
-%         fprintf('%3d\t%10.4f\t%10.4f\t%10.4f\t%10.4f\t%10.2f\n', k, ...
-%             historz.r_norm(k), historz.eps_pri(k), ...
-%             historz.s_norm(k), historz.eps_dual(k), historz.objval(k));
-%     end
+    historz.eps_dual(k)= sqrt(n)*ABSTOL + RELTOL*norm(u);
+
     
     if (historz.r_norm(k) < historz.eps_pri(k) && ...
             historz.s_norm(k) < historz.eps_dual(k))
